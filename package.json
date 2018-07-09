@@ -1,0 +1,27 @@
+{
+  "name": "1.x-hybrid-components",
+  "private": true,
+  "scripts": {
+    "postinstall": "polymer install --variants",
+    "lint": "npm run lint:js && npm run lint:wc",
+    "lint:js": "eslint --ext .js,.html .",
+    "lint:wc": "polymer lint -i **/components",
+    "test": "npm run lint && polymer test --skip-plugin sauce"
+  },
+  "homepage": "https://github.com/BrightspaceHypermediaComponents/1.x-hybrid-components",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BrightspaceHypermediaComponents/1.x-hybrid-components.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BrightspaceHypermediaComponents/1.x-hybrid-components/issues"
+  },
+  "author": "D2L Corporation",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "eslint": "^5.1.0",
+    "eslint-config-brightspace": "^0.4.0",
+    "eslint-plugin-html": "^4.0.5",
+    "polymer-cli": "^1.7.7"
+  }
+}

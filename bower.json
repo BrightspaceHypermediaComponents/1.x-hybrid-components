@@ -1,0 +1,55 @@
+{
+  "name": "1.x-hybrid-components",
+  "authors": [
+    "D2L Corporation"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/BrightspaceHypermediaComponents/1.x-hybrid-components",
+  "private": true,
+  "ignore": [
+    "test",
+    ".editorconfig",
+    ".eslintignore",
+    ".eslintrc.json",
+    ".gitignore",
+    "CODEOWNERS",
+    "package.json",
+    "polymer.json"
+  ],
+  "dependencies": {
+    "d2l-course-image": "Brightspace/course-image#^2.1.4",
+    "d2l-dropdown": "^6.0.7",
+    "d2l-fetch": "Brightspace/d2l-fetch#^1.8.0",
+    "d2l-hm-constants-behavior": "Brightspace/d2l-hm-constants-behavior#^5.0.0",
+    "d2l-icons": "^4.7.0",
+    "d2l-intersection-observer-polyfill-import": "Brightspace/intersection-observer-polyfill-import#1.0.0",
+    "d2l-loading-spinner": "^6.0.2",
+    "d2l-localize-behavior": "^1.1.0",
+    "d2l-menu": "^1.0.4",
+    "d2l-offscreen": "^3.0.3",
+    "d2l-organization-hm-behavior": "Brightspace/organization-hm-behavior#^2.0.1",
+    "d2l-tile": "^3.0.9",
+    "iron-a11y-announcer": "^2.0.0",
+    "polymer": "1 - 2",
+    "siren-parser-import": "Brightspace/siren-parser-import#^7.0.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "^2.0.0",
+    "iron-demo-helpers": "^2.0.0",
+    "iron-test-helpers": "^2.0.0",
+    "web-component-tester": "^6.5.0"
+  },
+  "variants": {
+    "1.x": {
+      "dependencies": {
+        "polymer": "^1.9.1"
+      },
+      "resolutions": {
+        "webcomponentsjs": "^0.7.24"
+      }
+    }
+  },
+  "resolutions": {
+    "webcomponentsjs": "^v1.0.0"
+  }
+}
