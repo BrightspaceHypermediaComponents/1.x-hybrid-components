@@ -1,7 +1,10 @@
 <link rel="import" href="../../../polymer/polymer.html">
 <link rel="import" href="../../../d2l-fetch/d2l-fetch.html">
+<link rel="import" href="../../../d2l-icons/d2l-icon.html">
+<link rel="import" href="../../../d2l-icons/tier1-icons.html">
 <link rel="import" href="../../../d2l-hm-constants-behavior/d2l-hm-constants-behavior.html">
 <link rel="import" href="../../../d2l-offscreen/d2l-offscreen.html">
+<link rel="import" href="../../../siren-parser-import/siren-parser.html">
 <link rel="import" href="localize-behavior.html">
 
 <dom-module id="d2l-organization-metadata">
@@ -72,7 +75,7 @@
 					<d2l-icon hidden$="[[!_showSeparator]]" class="separator-icon" icon="d2l-tier1:bullet"></d2l-icon>
 					<span hidden$="[[!showSemester]]" class="semester-text">[[_semesterName]]</span>
 				</div>
-				<d2l-offscreen>[[_overlayAnnounceText]]</d2l-offscreen>
+				<d2l-offscreen>[[announceText]]</d2l-offscreen>
 			</div>
 			<div hidden$="[[!_showUpdateCount]]">
 				<d2l-offscreen>[[localize('courseTile.updates')]]</d2l-offscreen>
@@ -86,6 +89,7 @@
 			is: 'd2l-organization-metadata',
 
 			properties: {
+				announceText: String,
 				href: String,
 				courseUpdatesConfig: Object,
 				showCourseCode: Boolean,
@@ -158,6 +162,10 @@
 					.then(this._handleOrganizationResponse.bind(this));
 			},
 			_organizationChanged: function(organization) {
+				if (!organization) {
+					return;
+				}
+
 				if (organization.hasLinkByRel(this.HypermediaRels.parentSemester)) {
 					var semesterHref = organization.getLinkByRel(this.HypermediaRels.parentSemester).href;
 					this._fetchSirenEntity(semesterHref)
@@ -210,17 +218,18 @@
 				if (!url) {
 					return;
 				}
+
 				return window.d2lfetch
 					.fetch(new Request(url, {
 						headers: { Accept: 'application/vnd.siren+json' }
 					}))
-					.then( function(response) {
+					.then(function(response) {
 						return response.ok
 							? response.json()
 							: Promise.reject(response.status + ' ' + response.statusText);
 					}.bind(this))
 					.then(window.D2L.Hypermedia.Siren.Parse);
-			},
+			}
 		});
 	</script>
 </dom-module>
