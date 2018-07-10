@@ -231,8 +231,10 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 				href="[[_organizationUrl]]"
 				course-updates-config="[[courseUpdatesConfig]]"
 				show-course-code="[[showCourseCode]]"
-				show-semester="[[showSemester]]">
+				show-semester="[[showSemester]]"
+				announce-text="[[_overlayAnnounceText]]">
 			</d2l-organization-metadata>
+
 		</d2l-image-tile>
 	</template>
 	<script>
@@ -322,7 +324,7 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 			behaviors: [
 				window.D2L.Hypermedia.HMConstantsBehavior,
 				D2L.PolymerBehaviors.Hypermedia.OrganizationHMBehavior,
-				D2L.PolymerBehaviors.CourseImageTile.LocalizeBehavior,
+				D2L.PolymerBehaviors.CourseImageTile.LocalizeBehavior
 			],
 			observers: [
 				'_fetchEnrollmentData(_load, enrollment)'
