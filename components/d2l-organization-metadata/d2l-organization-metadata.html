@@ -1,0 +1,226 @@
+<link rel="import" href="../../../polymer/polymer.html">
+<link rel="import" href="../../../d2l-fetch/d2l-fetch.html">
+<link rel="import" href="../../../d2l-hm-constants-behavior/d2l-hm-constants-behavior.html">
+<link rel="import" href="../../../d2l-offscreen/d2l-offscreen.html">
+<link rel="import" href="localize-behavior.html">
+
+<dom-module id="d2l-organization-metadata">
+	<template strip-whitespace>
+		<style>
+			.flex {
+				display: flex;
+			}
+
+			.course-text {
+				margin-top: 0.6rem;
+				float: left;
+				flex: 1;
+				overflow: hidden;
+				word-wrap: break-word; /* IE/Edge */
+				overflow-wrap: break-word; /* replaces 'word-wrap' in Firefox, Chrome, Safari */
+			}
+			:host:hover .course-text,
+			d2l-image-tile[focused] .course-text {
+				text-decoration: underline;
+			}
+			:host:hover d2l-image-tile[disabled] .course-text,
+			:host:focus d2l-image-tile[disabled] .course-text {
+				text-decoration: none;
+			}
+
+			:host([show-course-code]) .course-code-text,
+			:host([show-course-code]) .separator-icon,
+			:host([show-semester]) .semester-text {
+				display: inline-block;
+			}
+			.course-code-text,
+			.semester-text  {
+				-ms-word-break: break-all;
+				word-break: break-all;
+				word-break: break-word; /* Best case, only works in Chrome though */
+				@apply --d2l-body-small-text;
+			}
+			.separator-icon {
+				color: var(--d2l-color-tungsten)
+			}
+			.uppercase {
+				text-transform: uppercase;
+			}
+
+			.update-text-box {
+				border: 2px solid var(--d2l-color-carnelian);
+				color: var(--d2l-color-carnelian);
+				border-radius: 0.25rem;
+				box-sizing: border-box;
+				font-size: 1rem;
+				font-weight: 700;
+				width: 2rem;
+				height: 2rem;
+				line-height: 2rem;
+				display: inline-flex;
+				margin-top: 0.25rem;
+				align-items: center;
+				justify-content: center;
+			}
+		</style>
+
+		<div class="flex">
+			<div class="course-text">
+				[[_organizationName]]
+				<div>
+					<span hidden$="[[!showCourseCode]]" class="course-code-text uppercase">[[_organizationCode]]</span>
+					<d2l-icon hidden$="[[!_showSeparator]]" class="separator-icon" icon="d2l-tier1:bullet"></d2l-icon>
+					<span hidden$="[[!showSemester]]" class="semester-text">[[_semesterName]]</span>
+				</div>
+				<d2l-offscreen>[[_overlayAnnounceText]]</d2l-offscreen>
+			</div>
+			<div hidden$="[[!_showUpdateCount]]">
+				<d2l-offscreen>[[localize('courseTile.updates')]]</d2l-offscreen>
+				<span class="update-text-box">[[_updateString]]</span>
+			</div>
+		</div>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'd2l-organization-metadata',
+
+			properties: {
+				href: String,
+				courseUpdatesConfig: Object,
+				showCourseCode: Boolean,
+				showSemester: Boolean,
+
+				_organization: Object,
+				_organizationName: {
+					type: String,
+					computed: '_computeOrganizationName(_organization)'
+				},
+				_organizationCode: {
+					type: String,
+					computed: '_computeOrganizationCode(_organization)'
+				},
+				_semester: Object,
+				_semesterName: {
+					type: String,
+					computed: '_computeOrganizationName(_semester)'
+				},
+				_showSeparator: {
+					type: Boolean,
+					value: false,
+					computed: '_computeShowSeparator(showCourseCode, showSemester, _organizationCode, _semesterName)'
+				},
+				_showUpdateCount: {
+					type: Boolean,
+					computed: '_computeShowUpdateCount(courseUpdatesConfig, _updateCount)'
+				},
+				_updateCount: {
+					type: Number,
+					value: 0
+				},
+				_updateString: {
+					type: String,
+					computed: '_computeUpdateString(_updateCount)'
+				}
+			},
+			observers: [
+				'_hrefChanged(href)',
+				'_organizationChanged(_organization)'
+			],
+			behaviors: [
+				window.D2L.Hypermedia.HMConstantsBehavior,
+				D2L.PolymerBehaviors.OrganizationMetadata.LocalizeBehavior
+			],
+
+			_computeOrganizationName: function(organization) {
+				return organization && organization.properties && organization.properties.name;
+			},
+			_computeOrganizationCode: function(organization) {
+				return organization && organization.properties && organization.properties.code;
+			},
+			_computeShowSeparator: function(showCourseCode, showSemester, organizationCode, semesterName) {
+				return showCourseCode
+					&& showSemester
+					&& organizationCode
+					&& organizationCode.length > 0
+					&& semesterName
+					&& semesterName.length > 0;
+			},
+			_computeShowUpdateCount: function(courseUpdatesConfig, updateCount) {
+				return !!courseUpdatesConfig && updateCount > 0;
+			},
+			_computeUpdateString: function(updateCount) {
+				return updateCount > 99 ? '99+' : updateCount;
+			},
+
+			_hrefChanged: function(href) {
+				this._fetchSirenEntity(href)
+					.then(this._handleOrganizationResponse.bind(this));
+			},
+			_organizationChanged: function(organization) {
+				if (organization.hasLinkByRel(this.HypermediaRels.parentSemester)) {
+					var semesterHref = organization.getLinkByRel(this.HypermediaRels.parentSemester).href;
+					this._fetchSirenEntity(semesterHref)
+						.then(this._handleSemesterResponse.bind(this));
+				}
+
+				if (organization.hasLinkByRel(this.HypermediaRels.Notifications.organizationNotifications)) {
+					var notificationsHref = organization.getLinkByRel(this.HypermediaRels.Notifications.organizationNotifications).href;
+					this._fetchSirenEntity(notificationsHref)
+						.then(this._handleNotificationsResponse.bind(this))
+						.catch(function() {
+							// If we fail to fetch notifications, hide the orange box (via computed _showUpdateCount)
+							this._updateCount = 0;
+						}.bind(this));
+				}
+			},
+
+			_handleNotificationsResponse: function(notificationsEntity) {
+				if (!notificationsEntity) {
+					return;
+				}
+
+				var total = 0;
+				if (this.courseUpdatesConfig.showUnattemptedQuizzes) {
+					total += notificationsEntity.properties.UnattemptedQuizzes;
+				}
+				if (this.courseUpdatesConfig.showDropboxUnreadFeedback) {
+					total += notificationsEntity.properties.UnreadAssignmentFeedback;
+				}
+				if (this.courseUpdatesConfig.showUngradedQuizAttempts) {
+					total += notificationsEntity.properties.UngradedQuizzes;
+				}
+				if (this.courseUpdatesConfig.showUnreadDiscussionMessages) {
+					total += notificationsEntity.properties.UnreadDiscussions + notificationsEntity.properties.UnapprovedDiscussions;
+				}
+				if (this.courseUpdatesConfig.showUnreadDropboxSubmissions) {
+					total += notificationsEntity.properties.UnreadAssignmentSubmissions;
+				}
+
+				this._updateCount = total;
+			},
+			_handleOrganizationResponse: function(organizationEntity) {
+				this._organization = organizationEntity;
+			},
+			_handleSemesterResponse: function(semesterEntity) {
+				this._semester = semesterEntity;
+			},
+
+			_fetchSirenEntity: function(url) {
+				if (!url) {
+					return;
+				}
+				return window.d2lfetch
+					.fetch(new Request(url, {
+						headers: { Accept: 'application/vnd.siren+json' }
+					}))
+					.then( function(response) {
+						return response.ok
+							? response.json()
+							: Promise.reject(response.status + ' ' + response.statusText);
+					}.bind(this))
+					.then(window.D2L.Hypermedia.Siren.Parse);
+			},
+		});
+	</script>
+</dom-module>
