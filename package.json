@@ -3,10 +3,12 @@
   "private": true,
   "scripts": {
     "postinstall": "polymer install --variants",
-    "lint": "npm run lint:js && npm run lint:wc",
-    "lint:js": "eslint --ext .js,.html .",
-    "lint:wc": "polymer lint -i **/components",
-    "test": "npm run lint && polymer test --skip-plugin sauce"
+    "test": "npm run lint && npm run test:polymer:local",
+    "lint": "npm run lint:html && npm run lint:wc",
+    "lint:html": "eslint *.html components/**/*.html test/**/*.{js,html}",
+    "lint:wc": "polymer lint -i *.html components/**/*.html",
+    "test:polymer:local": "polymer test --skip-plugin sauce",
+    "test:polymer:sauce": "polymer test --skip-plugin local"
   },
   "homepage": "https://github.com/BrightspaceHypermediaComponents/1.x-hybrid-components",
   "repository": {
