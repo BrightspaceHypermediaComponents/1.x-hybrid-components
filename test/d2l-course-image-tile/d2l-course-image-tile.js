@@ -5,7 +5,7 @@ describe('d2l-course-image-tile', () => {
 		sandbox,
 		enrollmentEntity,
 		organizationEntity,
-		semesterOrganizationEntity;
+		presentationEntity;
 
 	function SetupFetchStub(url, entity) {
 		fetchStub.withArgs(sinon.match.has('url', sinon.match(url)))
@@ -18,7 +18,8 @@ describe('d2l-course-image-tile', () => {
 	function loadEnrollment(done) {
 		var spy = sandbox.spy(component, '_handleOrganizationResponse');
 
-		component.enrollment = enrollmentEntity;
+		component.href = '/enrollment/1';
+		component.presentationHref = '/d2l/le/manageCourses/homepage-component/1';
 
 		setTimeout(() => {
 			expect(spy).to.have.been.calledOnce;
@@ -109,52 +110,31 @@ describe('d2l-course-image-tile', () => {
 				}]
 			}]
 		});
-		semesterOrganizationEntity = window.D2L.Hypermedia.Siren.Parse({
-			class: ['active', 'semester'],
+
+		presentationEntity = window.D2L.Hypermedia.Siren.Parse({
 			properties: {
-				name: 'Test Semester',
-				code: 'SEM169'
+				ShowCourseCode: false,
+				ShowSemester: false,
+				ShowUnattemptedQuizzes: false,
+				ShowDropboxUnreadFeedback: false,
+				ShowUngradedQuizAttempts: false,
+				ShowUnreadDiscussionMessages: false,
+				ShowUnreadDropboxSubmissions: false
 			},
 			links: [{
-				rel: ['https://api.brightspace.com/rels/organization-homepage'],
-				href: 'http://example.com/2/home',
-				type: 'text/html'
-			}, {
-				rel: ['https://notifications.api.brightspace.com/rels/organization-notifications'],
-				href: '/organizations/2/my-notifications'
+				rel: ['https://api.brightspace.com/rels/user-settings'],
+				href: ''
 			}, {
 				rel: ['self'],
-				href: '/organizations/2'
-			}],
-			entities: [{
-				class: ['course-image'],
-				propeties: {
-					name: '2.jpg',
-					type: 'image/jpeg'
-				},
-				rel: ['https://api.brightspace.com/rels/organization-image'],
-				links: [{
-					rel: ['self'],
-					href: '/organizations/2/image'
-				}, {
-					rel: ['alternate'],
-					href: '',
-					class: ['tile']
-				}]
-			}, {
-				class: ['relative-uri'],
-				rel: ['item', 'https://api.brightspace.com/rels/organization-homepage'],
-				properties: {
-					path: 'http://example.com/2/home'
-				}
+				href: '/d2l/le/manageCourses/homepage-component/1'
 			}]
 		});
 
 		fetchStub = sandbox.stub(window.d2lfetch, 'fetch');
+		SetupFetchStub(/\/enrollment\/1$/, enrollmentEntity);
 		SetupFetchStub(/\/organizations\/1$/, organizationEntity);
-		SetupFetchStub(/\/organizations\/2$/, semesterOrganizationEntity);
 		SetupFetchStub(/\/organizations\/1\/image/, {});
-		SetupFetchStub(/\/organizations\/1\/my-notifications$/, { properties: {} });
+		SetupFetchStub(/\/d2l\/le\/manageCourses\/homepage-component\/1/, presentationEntity);
 
 		component = fixture('d2l-course-image-tile-fixture');
 		component._load = true;
@@ -171,13 +151,8 @@ describe('d2l-course-image-tile', () => {
 	describe('Public API', () => {
 
 		it('should implement all properties', () => {
-			expect(component.courseUpdatesConfig).to.be.an('object');
-			expect(component.enrollment).to.be.an('object');
-			expect(component.pinned).to.equal(false);
-			expect(component.showCourseCode).to.equal(false);
-			expect(component.showSemester).to.equal(false);
-			expect(component.startedInactive).to.equal(false);
-			expect(component.tileSizes).to.be.an('object');
+			expect(component.href).to.equal(null);
+			expect(component.presentationHref).to.equal(null);
 		});
 
 		it('should implement refreshImage', () => {
@@ -190,20 +165,20 @@ describe('d2l-course-image-tile', () => {
 
 		beforeEach(done => loadEnrollment(done));
 
+		it('should set the enrollment href', () => {
+			expect(component.href).to.equal('/enrollment/1');
+		});
+
+		it('should set presentation href', () => {
+			expect(component.presentationHref).to.equal('/d2l/le/manageCourses/homepage-component/1');
+		});
+
 		it('should fetch the organization', () => {
 			expect(component._organization).to.equal(organizationEntity);
 		});
 
 		it('should set the Course Offering Information URL', () => {
 			expect(component._courseInfoUrl).to.equal('http://example.com/1/info');
-		});
-
-		it('should set the semester organization URL', () => {
-			expect(component._semesterUrl).to.equal('/organizations/2');
-		});
-
-		it('should set the notifications URL', () => {
-			expect(component._notificationsUrl).to.equal('/organizations/1/my-notifications');
 		});
 
 		it('should set the image entity', () => {
@@ -215,7 +190,7 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should set the pin state', () => {
-			expect(component.pinned).to.equal(true);
+			expect(component._pinned).to.equal(true);
 		});
 
 	});
@@ -267,102 +242,6 @@ describe('d2l-course-image-tile', () => {
 			expect(component._pinButtonLabel).to.equal('Course name is pinned. Unpin course');
 		});
 
-		it('should update the course name', () => {
-			component._organization = organizationEntity;
-
-			var courseText = component.$$('.course-text');
-			expect(courseText.innerText).to.contain(organizationEntity.properties.name);
-		});
-
-		describe('Course code', () => {
-
-			it('should show the course code if configured true', done => {
-				component.showCourseCode = true;
-				var courseCode = component.$$('.course-code-text');
-
-				setTimeout(() => {
-					expect(window.getComputedStyle(courseCode).getPropertyValue('display')).to.equal('inline-block');
-					done();
-				});
-			});
-
-			it('should not show the course code if configured false', done => {
-				component.showCourseCode = false;
-				var courseCode = component.$$('.course-code-text');
-
-				setTimeout(() => {
-					expect(window.getComputedStyle(courseCode).getPropertyValue('display')).to.equal('none');
-					done();
-				});
-
-			});
-
-		});
-
-	});
-
-	describe('Semester name', () => {
-
-		beforeEach(done => loadEnrollment(done));
-
-		it('should show the semester if the showSemester is set', () => {
-			component.showSemester = true;
-
-			return component._fetchSemester().then(() => {
-				var semester = component.$$('.semester-text');
-				expect(semester.innerText).to.equal(semesterOrganizationEntity.properties.name);
-				expect(window.getComputedStyle(semester).getPropertyValue('display')).to.equal('inline-block');
-			});
-		});
-
-		it('should not set the semester name if the show semester config is false', () => {
-			var spy = sandbox.spy(component, '_fetchSirenEntity');
-
-			component.showSemester = false;
-
-			return component._fetchSemester().then(() => {
-				expect(spy).to.have.not.been.called;
-			});
-
-		});
-
-	});
-
-	describe('Separator between course code and semester name', () => {
-
-		function testName(testCase) {
-			return 'should ' + (testCase.showSeparator ? '' : ' not ')
-				+ 'show the separator when '
-				+ 'showCourseCode=' + testCase.showCourseCode + ', '
-				+ 'showSemester=' + testCase.showSemester + ', '
-				+ 'semesterName="' + testCase.semesterName + '", '
-				+ 'courseCode="' + testCase.courseCode + '"';
-		}
-
-		[
-			{ showCourseCode: false, showSemester: false, semesterName: '', courseCode: '', showSeparator: false },
-			{ showCourseCode: false, showSemester: true, semesterName: '', courseCode: '', showSeparator: false },
-			{ showCourseCode: false, showSemester: true, semesterName: 'foo', courseCode: '', showSeparator: false },
-			{ showCourseCode: false, showSemester: true, semesterName: 'foo', courseCode: 'bar', showSeparator: false },
-			{ showCourseCode: true, showSemester: false, semesterName: '', courseCode: '', showSeparator: false },
-			{ showCourseCode: true, showSemester: false, semesterName: '', courseCode: 'bar', showSeparator: false },
-			{ showCourseCode: true, showSemester: true, semesterName: '', courseCode: 'bar', showSeparator: false },
-			{ showCourseCode: true, showSemester: true, semesterName: 'foo', courseCode: 'bar', showSeparator: true }
-		].forEach(testCase => {
-
-			it(testName(testCase), () => {
-				component.showCourseCode = testCase.showCourseCode;
-				component.showSemester = testCase.showSemester;
-				component._organization = organizationEntity;
-				component._organization.properties.code = testCase.courseCode;
-				component._semesterName = testCase.semesterName;
-
-				var separator = component.$$('.separator-icon');
-				expect(separator.hasAttribute('hidden')).to.equal(!testCase.showSeparator);
-			});
-
-		});
-
 	});
 
 	describe('Pinning functionality', () => {
@@ -370,7 +249,7 @@ describe('d2l-course-image-tile', () => {
 		beforeEach(done => loadEnrollment(done));
 
 		it('should have a visible "Unpin" menu item when pinned', () => {
-			component.pinned = true;
+			component._pinned = true;
 
 			var unpinMenuItem = component.$$('d2l-menu-item.d2l-menu-item-last');
 
@@ -379,7 +258,7 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should have a visible "Pin" menu item when pinned', () => {
-			component.pinned = false;
+			component._pinned = false;
 
 			var pinMenuItem = component.$$('d2l-menu-item.d2l-menu-item-last');
 			expect(pinMenuItem).to.not.be.null;
@@ -387,14 +266,14 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should have a visible pinned button when pinned', () => {
-			component.pinned = true;
+			component._pinned = true;
 
 			var pinButton = component.$$('.pin-indicator:not([hidden])');
 			expect(pinButton).to.not.be.null;
 		});
 
 		it('should hide the pinned button when unpinned', () => {
-			component.pinned = false;
+			component._pinned = false;
 
 			var pinButton = component.$$('.pin-indicator:not([hidden])');
 			expect(pinButton).to.be.null;
@@ -508,56 +387,7 @@ describe('d2l-course-image-tile', () => {
 
 	});
 
-	describe('Course updates functionality', () => {
-
-		beforeEach(done => loadEnrollment(done));
-
-		function testName(testCase) {
-			return 'should show ' +
-				(testCase.updatesShown ? testCase.updateString : 'nothing') +
-				' when updates=' + testCase.count;
-		}
-
-		[
-			{ count: -1, updateString: '-1', updatesShown: false },
-			{ count: 0, updateString: '0', updatesShown: false },
-			{ count: 1, updateString: '1', updatesShown: true },
-			{ count: 99, updateString: '99', updatesShown: true },
-			{ count: 100, updateString: '99+', updatesShown: true },
-		].forEach(testCase => {
-
-			it(testName(testCase), () => {
-				fetchStub.restore();
-				fetchStub = sandbox.stub(window.d2lfetch, 'fetch');
-				SetupFetchStub(/\/organizations\/1\/my-notifications$/, {
-					properties: {
-						UnattemptedQuizzes: testCase.count,
-						UnreadAssignmentFeedback: 0,
-						UngradedQuizzes: 0,
-						UnreadDiscussions: 0,
-						UnapprovedDiscussions: 0,
-						UnreadAssignmentSubmissions: 0
-					}
-				});
-
-				component.courseUpdatesConfig = {
-					showUnattemptedQuizzes: true
-				};
-
-				return component._fetchNotifications().then(() => {
-					expect(component._showUpdateCount).to.equal(testCase.updatesShown);
-					expect(component._updateCount).to.equal(testCase.count);
-					var updateString = component.$$('.update-text-box').innerText;
-					expect(updateString).to.equal(testCase.updateString);
-				});
-
-			});
-
-		});
-
-	});
-
-	describe('Notification Overlay', () => {
+	describe('Image Overlay', () => {
 
 		var futureDate = new Date(3000, 0, 1, 15, 5).toISOString(),
 			pastDate = new Date(1900, 3, 30, 4, 38).toISOString(),
