@@ -4,7 +4,8 @@ describe('d2l-course-image-tile', () => {
 		fetchStub,
 		sandbox,
 		enrollmentEntity,
-		organizationEntity;
+		organizationEntity,
+		presentationEntity;
 
 	function SetupFetchStub(url, entity) {
 		fetchStub.withArgs(sinon.match.has('url', sinon.match(url)))
@@ -17,7 +18,8 @@ describe('d2l-course-image-tile', () => {
 	function loadEnrollment(done) {
 		var spy = sandbox.spy(component, '_handleOrganizationResponse');
 
-		component.enrollment = enrollmentEntity;
+		component.href = '/enrollment/1';
+		component.presentationHref = '/d2l/le/manageCourses/homepage-component/1';
 
 		setTimeout(() => {
 			expect(spy).to.have.been.calledOnce;
@@ -109,9 +111,30 @@ describe('d2l-course-image-tile', () => {
 			}]
 		});
 
+		presentationEntity = window.D2L.Hypermedia.Siren.Parse({
+			properties: {
+				ShowCourseCode: false,
+				ShowSemester: false,
+				ShowUnattemptedQuizzes: false,
+				ShowDropboxUnreadFeedback: false,
+				ShowUngradedQuizAttempts: false,
+				ShowUnreadDiscussionMessages: false,
+				ShowUnreadDropboxSubmissions: false
+			},
+			links: [{
+				rel: ['https://api.brightspace.com/rels/user-settings'],
+				href: ''
+			}, {
+				rel: ['self'],
+				href: '/d2l/le/manageCourses/homepage-component/1'
+			}]
+		});
+
 		fetchStub = sandbox.stub(window.d2lfetch, 'fetch');
+		SetupFetchStub(/\/enrollment\/1$/, enrollmentEntity);
 		SetupFetchStub(/\/organizations\/1$/, organizationEntity);
 		SetupFetchStub(/\/organizations\/1\/image/, {});
+		SetupFetchStub(/\/d2l\/le\/manageCourses\/homepage-component\/1/, presentationEntity);
 
 		component = fixture('d2l-course-image-tile-fixture');
 		component._load = true;
@@ -128,13 +151,8 @@ describe('d2l-course-image-tile', () => {
 	describe('Public API', () => {
 
 		it('should implement all properties', () => {
-			expect(component.courseUpdatesConfig).to.be.an('object');
-			expect(component.enrollment).to.be.an('object');
-			expect(component.pinned).to.equal(false);
-			expect(component.showCourseCode).to.equal(false);
-			expect(component.showSemester).to.equal(false);
-			expect(component.startedInactive).to.equal(false);
-			expect(component.tileSizes).to.be.an('object');
+			expect(component.href).to.equal(null);
+			expect(component.presentationHref).to.equal(null);
 		});
 
 		it('should implement refreshImage', () => {
@@ -146,6 +164,14 @@ describe('d2l-course-image-tile', () => {
 	describe('Setting the enrollment attribute', () => {
 
 		beforeEach(done => loadEnrollment(done));
+
+		it('should set the enrollment href', () => {
+			expect(component.href).to.equal('/enrollment/1');
+		});
+
+		it('should set presentation href', () => {
+			expect(component.presentationHref).to.equal('/d2l/le/manageCourses/homepage-component/1');
+		});
 
 		it('should fetch the organization', () => {
 			expect(component._organization).to.equal(organizationEntity);
@@ -164,7 +190,7 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should set the pin state', () => {
-			expect(component.pinned).to.equal(true);
+			expect(component._pinned).to.equal(true);
 		});
 
 	});
@@ -223,7 +249,7 @@ describe('d2l-course-image-tile', () => {
 		beforeEach(done => loadEnrollment(done));
 
 		it('should have a visible "Unpin" menu item when pinned', () => {
-			component.pinned = true;
+			component._pinned = true;
 
 			var unpinMenuItem = component.$$('d2l-menu-item.d2l-menu-item-last');
 
@@ -232,7 +258,7 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should have a visible "Pin" menu item when pinned', () => {
-			component.pinned = false;
+			component._pinned = false;
 
 			var pinMenuItem = component.$$('d2l-menu-item.d2l-menu-item-last');
 			expect(pinMenuItem).to.not.be.null;
@@ -240,14 +266,14 @@ describe('d2l-course-image-tile', () => {
 		});
 
 		it('should have a visible pinned button when pinned', () => {
-			component.pinned = true;
+			component._pinned = true;
 
 			var pinButton = component.$$('.pin-indicator:not([hidden])');
 			expect(pinButton).to.not.be.null;
 		});
 
 		it('should hide the pinned button when unpinned', () => {
-			component.pinned = false;
+			component._pinned = false;
 
 			var pinButton = component.$$('.pin-indicator:not([hidden])');
 			expect(pinButton).to.be.null;

@@ -176,7 +176,7 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 				<d2l-course-image
 					class="image-layer-bottom"
 					image="[[_image]]"
-					sizes="[[tileSizes]]"
+					sizes="[[_tileSizes]]"
 					type="tile">
 				</d2l-course-image>
 				<div hidden$="[[!_hasOverlay]]" class="overlay">
@@ -205,19 +205,19 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 					</d2l-menu-item>
 					<d2l-menu-item
 						on-d2l-menu-item-select="_pinClickHandler"
-						hidden$="[[pinned]]"
+						hidden$="[[_pinned]]"
 						text="[[localize('pin')]]">
 					</d2l-menu-item>
 					<d2l-menu-item
 						on-d2l-menu-item-select="_pinClickHandler"
-						hidden$="[[!pinned]]"
+						hidden$="[[!_pinned]]"
 						text="[[localize('unpin')]]">
 					</d2l-menu-item>
 				</d2l-menu>
 			</d2l-dropdown-menu>
 			<button
 				slot="d2l-image-tile-menu-adjacent"
-				hidden$="[[!pinned]]"
+				hidden$="[[!_pinned]]"
 				class="pin-indicator"
 				on-tap="_pinClickHandler"
 				on-keypress="_pinPressHandler"
@@ -225,13 +225,13 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 				<d2l-icon icon="d2l-tier1:pin-filled"></d2l-icon>
 			</button>
 
-			<div class="alert-colour-circle" hidden$="[[!startedInactive]]"></div>
+			<div class="alert-colour-circle" hidden$="[[!_startedInactive]]"></div>
 
 			<d2l-organization-metadata
 				href="[[_organizationUrl]]"
-				course-updates-config="[[courseUpdatesConfig]]"
-				show-course-code="[[showCourseCode]]"
-				show-semester="[[showSemester]]"
+				course-updates-config="[[_courseUpdatesConfig]]"
+				show-course-code="[[_showCourseCode]]"
+				show-semester="[[_showSemester]]"
 				announce-text="[[_overlayAnnounceText]]">
 			</d2l-organization-metadata>
 
@@ -240,41 +240,63 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 	<script>
 		Polymer({
 			is: 'd2l-course-image-tile',
-
 			properties: {
-				courseUpdatesConfig: {
+				/**
+				 * A location of an enrollement entity
+				 */
+				href: {
+					type: String,
+					value: null
+				},
+				/**
+				 * A location for presentation information
+				 */
+				presentationHref: {
+					type: String,
+					value: null
+				},
+				_tileSizes: {
+					type: Object,
+					value: function() {
+						return {
+							mobile: {
+								maxwidth: 767,
+								size: 99
+							},
+							tablet: {
+								maxwidth: 1243,
+								size: 67
+							},
+							desktop: {
+								size: 25
+							}
+						};
+					}
+				},
+				_showCourseCode: {
+					type: Boolean,
+					value: false
+				},
+				_showSemester: {
+					type: Boolean,
+					value: false
+				},
+				_courseUpdatesConfig: {
 					type: Object,
 					value: function() { return {}; }
 				},
-				enrollment: {
+				_enrollment: {
 					type: Object,
 					value: function() { return {}; }
 				},
-				pinned: {
+				_pinned: {
 					type: Boolean,
-					value: false,
-					reflectToAttribute: true
+					value: false
 				},
-				showCourseCode: {
+				_startedInactive: {
 					type: Boolean,
-					value: false,
-					reflectToAttribute: true
+					value: false
 				},
-				showSemester: {
-					type: Boolean,
-					value: false,
-					reflectToAttribute: true
-				},
-				startedInactive: {
-					type: Boolean,
-					value: false,
-					reflectToAttribute: true
-				},
-				tileSizes: {
-					type: Object,
-					value: function() { return {}; }
-				},
-
 				_canAccessCourseInfo: {
 					type: Boolean,
 					computed: '_computeCanAccessCourseInfo(_organization)'
@@ -327,7 +349,8 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 				D2L.PolymerBehaviors.CourseImageTile.LocalizeBehavior
 			],
 			observers: [
-				'_fetchEnrollmentData(_load, enrollment)'
+				'_fetchEnrollment(_load, href)',
+				'_fetchPresentationData(_load, hrefPresentation)'
 			],
 			ready: function() {
 				Polymer.IronA11yAnnouncer.requestAvailability();
@@ -434,9 +457,9 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 					this._overlayDate = null;
 					this._overlayInactive = this.localize('overlay.inactive');
 					this._overlayTitle = null;
-					if (startDate && this.pinned && organization.hasLinkByRel(this.HypermediaRels.courseOfferingInfoPage)) {
+					if (startDate && this._pinned && organization.hasLinkByRel(this.HypermediaRels.courseOfferingInfoPage)) {
 						// We only care about calling out started-inactive courses if they're pinned, and if the user is admin-ish
-						this.startedInactive = true;
+						this._startedInactive = true;
 						this.fire('started-inactive');
 					}
 					return this._overlayInactive;
@@ -477,17 +500,52 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 					}.bind(this), 1000);
 				}.bind(this), 1000);
 			},
-			_fetchEnrollmentData: function(load, enrollment) {
-				if (
-					!load
-					|| !enrollment
+			_fetchPresentationData: function(load, presentationHref) {
+				if (!load || !presentationHref) {
+					return Promise.resolve();
+				}
+
+				return this._fetchSirenEntity(presentationHref)
+					.then(this._setPresentation.bind(this));
+			},
+			_handlePesentationReponse: function(presentation) {
+				if (!presentation || !presentation.properties) {
+					return;
+				}
+				this._showCourseCode = presentation.properties.showCourseCode;
+				this._showSemester = presentation.properties.showSemester;
+				this._courseUpdatesConfig = {
+					'showUnattemptedQuizzes': presentation.properties.showUnattemptedQuizzes,
+					'showDropboxUnreadFeedback': presentation.properties.showDropboxUnreadFeedback,
+					'showUngradedQuizAttempts': presentation.properties.showUngradedQuizAttempts,
+					'showUnreadDiscussionMessages': presentation.properties.showUnreadDiscussionMessages,
+					'showUnreadDropboxSubmissions': presentation.properties.showUnreadDropboxSubmissions
+				};
+			},
+			_fetchEnrollment: function(load, enrollmentUrl) {
+				if (!load || !enrollmentUrl) {
+					return Promise.resolve();
+				}
+
+				return this._fetchSirenEntity(enrollmentUrl)
+					.then(this._handleEnrollmentData.bind(this));
+			},
+			_handleEnrollmentData: function(enrollment) {
+				if (!enrollment
 					|| !enrollment.hasLinkByRel
 					|| !enrollment.hasLinkByRel(this.HypermediaRels.organization)
 				) {
 					return;
 				}
+				this._enrollment = enrollment;
 
-				this.pinned = enrollment.hasClass(this.HypermediaClasses.enrollments.pinned);
+				// Set Pin attribute.
+				this._pinned = enrollment.hasClass(this.HypermediaClasses.enrollments.pinned);
+				if(this._pinned) {
+					this.setAttribute('pinned', '');
+				} else {
+					this.removeAttribute('pinned', '');
+				}
 
 				this._organizationUrl = enrollment.getLinkByRel(this.HypermediaRels.organization).href;
 
@@ -588,9 +646,9 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 				}
 			},
 			_pinClickHandler: function() {
-				var pinAction = this.pinned
-					? this.enrollment.getActionByName(this.HypermediaActions.enrollments.unpinCourse)
-					: this.enrollment.getActionByName(this.HypermediaActions.enrollments.pinCourse);
+				var pinAction = this._pinned
+					? this._enrollment.getActionByName(this.HypermediaActions.enrollments.unpinCourse)
+					: this._enrollment.getActionByName(this.HypermediaActions.enrollments.pinCourse);
 
 				var body = '';
 				var fields = pinAction.fields || [];
@@ -598,12 +656,12 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 					body = body + encodeURIComponent(field.name) + '=' + encodeURIComponent(field.value) + '&';
 				});
 
-				this.fire(this.pinned ? 'enrollment-pinned' : 'enrollment-unpinned', {
-					enrollment: this.enrollment,
+				this.fire(this._pinned ? 'enrollment-pinned' : 'enrollment-unpinned', {
+					enrollment: this._enrollment,
 					organization: this._organization
 				});
 
-				var localizeKey = this.pinned ? 'unpinActionResult' : 'pinActionResult';
+				var localizeKey = this._pinned ? 'unpinActionResult' : 'pinActionResult';
 				this.fire('iron-announce', {
 					text: this.localize(localizeKey, 'course', this._organization.properties.name)
 				}, { bubbles: true });
@@ -618,15 +676,13 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 						}
 					}))
 					.then(this._responseToSirenEntity.bind(this))
-					.then(function(enrollment) {
-						this.enrollment = enrollment;
-					}.bind(this))
+					.then(this._handleEnrollmentData.bind(this))
 					.then(function() {
 						// Wait until after PUT has finished to fire, so that
 						// listeners are guaranteed to fetch updated entity
 						this.fire('d2l-course-pinned-change', {
-							enrollment: this.enrollment,
-							isPinned: this.pinned
+							enrollment: this._enrollment,
+							isPinned: this._pinned
 						});
 					}.bind(this));
 			},
