@@ -442,7 +442,7 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 								break;
 							}
 						}
-					};
+					}.bind(this);
 
 					// Small shim for Edge/IE/Safari
 					var delayFunction = window.requestIdleCallback || setTimeout;
@@ -457,7 +457,7 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 						this._load = true;
 					}.bind(this));
 
-					var observer = new IntersectionObserver(observerCallback.bind(this));
+					var observer = new IntersectionObserver(observerCallback);
 					observer.observe(imageTile);
 				});
 			},
@@ -635,7 +635,7 @@ This is used in `d2l-my-courses-content` (when the `us90524-my-courses-css-grid-
 					.catch(function() {
 						// If we fail to fetch notifications, hide the orange box (via computed _showUpdateCount)
 						this._updateCount = 0;
-					});
+					}.bind(this));
 			},
 			_fetchSemester: function() {
 				if (!this._semesterUrl || !this.showSemester) {
